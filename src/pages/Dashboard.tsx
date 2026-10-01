@@ -62,7 +62,26 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
       const apotreDisponibleCdf = Math.max(0, apotreDueCdf - reversementsApotreCdf); const apotreDisponibleUsd = Math.max(0, apotreDueUsd - reversementsApotreUsd);
       setTotalApotreCdf(apotreDisponibleCdf); setTotalApotreUsd(apotreDisponibleUsd);
 
-      setEntreesMoisCdf(monthlyEntreesCdf[month]); setEntreesMoisUsd(monthlyEntreesUsd[month]); setEntreesMoisPrecCdf(monthlyEntreesCdf[month === 0 ? 11 : month - 1]); setSortiesMoisCdf(monthlySortiesCdf[month]); setSortiesMoisUsd(monthlySortiesUsd[month]);
+      // compute current and previous month totals robustly (fallback to filtering `entrees` if aggregations are missing)
+      const prevMonthIndex = month === 0 ? 11 : month - 1;
+
+      const currentMonthEntreesCdf = (Array.isArray(monthlyEntreesCdf) && typeof monthlyEntreesCdf[month] === 'number')
+        ? monthlyEntreesCdf[month]
+        : entrees.filter((e) => new Date(`${e.date}T00:00:00`).getMonth() === month).reduce((s, e) => s + Number(e.montant_cdf), 0);
+
+      const currentMonthEntreesUsd = (Array.isArray(monthlyEntreesUsd) && typeof monthlyEntreesUsd[month] === 'number')
+        ? monthlyEntreesUsd[month]
+        : entrees.filter((e) => new Date(`${e.date}T00:00:00`).getMonth() === month).reduce((s, e) => s + Number(e.montant_usd), 0);
+
+      const prevMonthEntreesCdf = (Array.isArray(monthlyEntreesCdf) && typeof monthlyEntreesCdf[prevMonthIndex] === 'number')
+        ? monthlyEntreesCdf[prevMonthIndex]
+        : entrees.filter((e) => new Date(`${e.date}T00:00:00`).getMonth() === prevMonthIndex).reduce((s, e) => s + Number(e.montant_cdf), 0);
+
+      setEntreesMoisCdf(currentMonthEntreesCdf);
+      setEntreesMoisUsd(currentMonthEntreesUsd);
+      setEntreesMoisPrecCdf(prevMonthEntreesCdf);
+      setSortiesMoisCdf((Array.isArray(monthlySortiesCdf) && typeof monthlySortiesCdf[month] === 'number') ? monthlySortiesCdf[month] : 0);
+      setSortiesMoisUsd((Array.isArray(monthlySortiesUsd) && typeof monthlySortiesUsd[month] === 'number') ? monthlySortiesUsd[month] : 0);
 
       const totalAllEntreesCdf = entrees.reduce((s, e) => s + e.montant_cdf, 0); const totalAllEntreesUsd = entrees.reduce((s, e) => s + e.montant_usd, 0);
       const totalSortiesCdf = monthlySortiesCdf.reduce((s, v) => s + v, 0); const totalSortiesUsd = monthlySortiesUsd.reduce((s, v) => s + v, 0);
@@ -103,7 +122,6 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
     }
   };
 
-  const variation = entreesMoisPrecCdf > 0 ? ((entreesMoisCdf - entreesMoisPrecCdf) / entreesMoisPrecCdf) * 100 : 0;
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600" /></div>;
 
   return <div className="space-y-6">
@@ -113,7 +131,6 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center"><TrendingUp className="w-5 h-5 text-emerald-600" /></div><div><h4 className="font-semibold text-gray-800 text-sm">Recettes ce mois</h4><div className="text-2xl font-bold text-gray-900">{formatCdf(entreesMoisCdf)}</div></div></div></div>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center"><TrendingDown className="w-5 h-5 text-red-600" /></div><div><h4 className="font-semibold text-gray-800 text-sm">Dépenses ce mois</h4><div className="text-2xl font-bold text-gray-900">{formatCdf(sortiesMoisCdf)}</div></div></div></div>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><Wallet className="w-5 h-5 text-blue-600" /></div><div><h4 className="font-semibold text-gray-800 text-sm">Solde net</h4><div className="text-2xl font-bold text-gray-900">{formatDual(soldeNetCdf, soldeNetUsd)}</div></div></div></div>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center"><ArrowUpRight className="w-5 h-5 text-amber-600" /></div><div><h4 className="font-semibold text-gray-800 text-sm">Variation</h4><div className="text-2xl font-bold text-gray-900">{variation.toFixed(1)}%</div></div></div></div>
     </div>
 
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
