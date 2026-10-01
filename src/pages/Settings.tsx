@@ -18,6 +18,7 @@ export function SettingsPage({ config, onBack, onConfigChange }: SettingsPagePro
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newYear, setNewYear] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleSave = async (e: React.FormEvent) => { e.preventDefault(); setSaving(true); setError(null); const { error: err } = await updateConfig({ nom_communaute: nomCommunaute, paroisse, mdp_acces: mdpAcces, mdp_sortie: mdpSortie }); setSaving(false); if (err) { setError(err); return; } setSaved(true); setTimeout(() => setSaved(false), 3000); onConfigChange(); };
 
@@ -39,24 +40,29 @@ export function SettingsPage({ config, onBack, onConfigChange }: SettingsPagePro
     setSaving(false); setNewYear(true); onConfigChange(); setTimeout(() => setNewYear(false), 3000);
   };
 
-  const handleResetAll = async () => {
-    const confirmed = window.confirm('Voulez-vous réellement tout remettre à 0 ?');
-    if (!confirmed) return;
+  // actual reset implementation (called after confirmation)
+  const performResetAll = async () => {
+    setShowResetConfirm(false);
     setSaving(true);
     setError(null);
-    await Promise.all([deleteAllEntrees(), deleteAllSorties(), deleteAllReversements(), deleteAllExercices()]);
-    await updateConfig({
-      nom_communaute: 'ÉGLISE GLOIRE DE DIEU',
-      paroisse: 'PAROISSE DE KYESHERO',
-      mdp_acces: 'admin123',
-      mdp_sortie: 'sortie123',
-      exercice_en_cours: 2026,
-      taux_usd_cdf: 0,
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-    onConfigChange();
+    try {
+      await Promise.all([deleteAllEntrees(), deleteAllSorties(), deleteAllReversements(), deleteAllExercices()]);
+      await updateConfig({
+        nom_communaute: 'ÉGLISE GLOIRE DE DIEU',
+        paroisse: 'PAROISSE DE KYESHERO',
+        mdp_acces: 'admin123',
+        mdp_sortie: 'sortie123',
+        exercice_en_cours: 2026,
+        taux_usd_cdf: 0,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      onConfigChange();
+    } catch (err: any) {
+      setError(err?.message || 'Erreur lors de la réinitialisation.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -78,8 +84,22 @@ export function SettingsPage({ config, onBack, onConfigChange }: SettingsPagePro
         <button type="submit" disabled={saving} className="w-full py-3 px-6 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:opacity-50 text-white font-semibold rounded-xl shadow-sm flex items-center justify-center gap-2"><Save className="w-4 h-4" />{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
       </form>
       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mt-4"><div className="flex items-center gap-2 mb-3"><RefreshCw className="w-5 h-5 text-amber-600" /><h2 className="font-bold text-amber-800">Nouvel exercice</h2></div><p className="text-sm text-amber-800 mb-4">Archive l’exercice actuel et démarre un nouveau cycle financier.</p><button onClick={handleNewExercice} disabled={saving} className="w-full py-3 px-6 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold rounded-xl">Démarrer un nouvel exercice</button></div>
-      <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mt-4"><div className="flex items-center gap-2 mb-3"><Trash2 className="w-5 h-5 text-red-600" /><h2 className="font-bold text-red-800">Réinitialisation complète</h2></div><p className="text-sm text-red-700 mb-4">Cette action supprime toutes les entrées, sorties, reversements et archives, puis remet les paramètres par défaut.</p><button onClick={handleResetAll} disabled={saving} className="w-full py-3 px-6 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold rounded-xl">Tout remettre à 0</button></div>
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mt-4"><div className="flex items-center gap-2 mb-3"><Trash2 className="w-5 h-5 text-red-600" /><h2 className="font-bold text-red-800">Réinitialisation complète</h2></div><p className="text-sm text-red-700 mb-4">Cette action supprime toutes les entrées, sorties, reversements et archives, puis remet les paramètres par défaut.</p><button onClick={() => setShowResetConfirm(true)} disabled={saving} className="w-full py-3 px-6 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold rounded-xl">Tout remettre à 0</button></div>
+
+      {/* Confirmation modal (custom) */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowResetConfirm(false)} />
+          <div className="relative bg-white rounded-xl shadow-lg max-w-md w-full p-6 z-10">
+            <h3 className="text-lg font-semibold mb-3">Confirmer la réinitialisation</h3>
+            <p className="text-sm text-gray-700 mb-6">Voulez-vous réellement tout remettre à 0 ? Cette action est irréversible.</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setShowResetConfirm(false)} className="px-4 py-2 rounded-xl border border-gray-200">Non</button>
+              <button onClick={performResetAll} className="px-4 py-2 rounded-xl bg-red-600 text-white">Oui, tout remettre à 0</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
