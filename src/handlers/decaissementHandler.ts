@@ -22,6 +22,8 @@ export async function postDecaisser(req: Request, res: Response) {
       type
     });
 
+    // signal de sécurité explicite côté client : le décaissement ne change pas le solde net
+    res.setHeader("X-Delta-Solde", "0");
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=decaissement-${result.payoutId}.pdf`);
     return res.status(200).send(pdfBuffer);
