@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatCdf, formatUsd, formatDate, formatDateShort } from '@/utils/format';
+import { formatNumber, formatCdf, formatUsd, formatDate, formatDateShort } from '@/utils/format';
 import type { Config, EntreeWithCategorie, Reversement, Sortie } from '@/types';
 
 function officialHeader(doc: jsPDF, subtitle: string) {
@@ -66,31 +66,34 @@ function receipt(doc: jsPDF, config: Config, title: string, rows: [string, strin
 
 export function generateRecuEntree(config: Config, entree: EntreeWithCategorie, categorieNom: string) {
   const doc = new jsPDF();
-  receipt(doc, config, "REÇU D'ENTRÉE", [
-    ['N° Reçu', `ENT-${entree.id.toString().padStart(6, '0')}`],
+  // Title changed to "Bon d'entrée"
+  receipt(doc, config, "BON D'ENTRÉE", [
+    ['N° Bon', `ENT-${entree.id.toString().padStart(6, '0')}`],
     ['Date', formatDateShort(entree.date)],
     ['Culte / Service', entree.culte],
     ['Nature', categorieNom],
     ['Caisse', entree.devise],
-    ['Montant', entree.devise === 'CDF' ? formatCdf(entree.montant_cdf) : formatUsd(entree.montant_usd)],
+    // show amount as number; the PDF context shows which column it belongs to
+    ['Montant', entree.devise === 'CDF' ? formatNumber(Number(entree.montant_cdf || 0)) : formatNumber(Number(entree.montant_usd || 0))],
     ['Note', entree.note || '—'],
-  ], [22, 101, 52], `recu_entree_${entree.id}.pdf`);
+  ], [22, 101, 52], `bon_entree_${entree.id}.pdf`);
 }
 
 export function generateRecuSortie(config: Config, sortie: Sortie) {
   const doc = new jsPDF();
-  receipt(doc, config, 'REÇU DE SORTIE', [
-    ['N° Reçu', `SORT-${sortie.id.toString().padStart(6, '0')}`],
+  // Title changed to "Bon de sortie"
+  receipt(doc, config, 'BON DE SORTIE', [
+    ['N° Bon', `SORT-${sortie.id.toString().padStart(6, '0')}`],
     ['Date', formatDateShort(sortie.date)],
     ['Nature', sortie.nature],
     ['Caisse', sortie.devise],
-    ['Montant', sortie.devise === 'CDF' ? formatCdf(sortie.montant_cdf) : formatUsd(sortie.montant_usd)],
+    ['Montant', sortie.devise === 'CDF' ? formatNumber(Number(sortie.montant_cdf || 0)) : formatNumber(Number(sortie.montant_usd || 0))],
     ['Description', sortie.description || '—'],
     ["Nom de l'opérateur", sortie.nom_operateur],
     ["Numéro de l'opérateur", sortie.numero_operateur || '—'],
     ['Bénéficiaire', sortie.beneficiaire || '—'],
     ['N° bénéficiaire', sortie.numero_beneficiaire || '—'],
-  ], [185, 28, 28], `recu_sortie_${sortie.id}.pdf`);
+  ], [185, 28, 28], `bon_sortie_${sortie.id}.pdf`);
 }
 
 export function generateRecuReversement(config: Config, reversement: Reversement, label: string) {
@@ -100,9 +103,9 @@ export function generateRecuReversement(config: Config, reversement: Reversement
     ['Type', label],
     ['Date', formatDateShort(reversement.date_reversement)],
   ];
-  if (reversement.montant_cdf > 0) rows.push(['Caisse CDF', formatCdf(reversement.montant_cdf)]);
-  if (reversement.montant_usd > 0) rows.push(['Caisse USD', formatUsd(reversement.montant_usd)]);
-  rows.push(['Période', reversement.periode_debut && reversement.periode_fin ? `${formatDateShort(reversement.periode_debut)} - ${formatDateShort(reversement.periode_fin)}` : '—']);
+  if (reversement.montant_cdf > 0) rows.push(['Caisse CDF', formatNumber(Number(reversement.montant_cdf || 0))]);
+  if (reversement.montant_usd > 0) rows.push(['Caisse USD', formatNumber(Number(reversement.montant_usd || 0))]);
+  // Per user's request remove the Période row from reversement receipts
   receipt(doc, config, 'REÇU DE REVERSEMENT', rows, [180, 83, 9], `recu_reversement_${reversement.id}.pdf`);
 }
 
@@ -131,30 +134,57 @@ export function generateReport(config: Config, report: ReportData) {
   doc.text(`Période : ${report.periodeLabel}`, 14, 69);
   doc.text(`Exercice : ${report.year}`, 196, 69, { align: 'right' });
 
+  // Summary table: use numbers only (no currency labels) because columns indicate the currency
   autoTable(doc, {
     startY: 76,
     head: [['Type', 'Nombre', 'Total CDF', 'Total USD']],
     body: [
-      ['Entrées', String(report.entrees.length), formatCdf(report.totalEntreesCdf), formatUsd(report.totalEntreesUsd)],
-      ['Sorties', String(report.sorties.length), formatCdf(report.totalSortiesCdf), formatUsd(report.totalSortiesUsd)],
-      ['Reversements', String(report.reversements.length), formatCdf(report.totalReversementsCdf), formatUsd(report.totalReversementsUsd)],
-      ['Solde', '', formatCdf(report.soldeCdf), formatUsd(report.soldeUsd)],
+      ['Entrées', String(report.entrees.length), formatNumber(report.totalEntreesCdf), formatNumber(report.totalEntreesUsd)],
+      ['Sorties', String(report.sorties.length), formatNumber(report.totalSortiesCdf), formatNumber(report.totalSortiesUsd)],
+      ['Reversements', String(report.reversements.length), formatNumber(report.totalReversementsCdf), formatNumber(report.totalReversementsUsd)],
+      ['Solde', '', formatNumber(report.soldeCdf), formatNumber(report.soldeUsd)],
     ],
     theme: 'striped',
     headStyles: { fillColor: [22, 101, 52] },
     margin: { left: 14, right: 14, bottom: 22 },
   });
 
+  // Detailed rows: split amounts into two columns (CDF / USD) and show numbers only
   const detailRows: string[][] = [
-    ...report.entrees.map((item) => [formatDateShort(item.date), 'Entrée', item.categorie_nom || item.culte, item.culte, item.devise === 'CDF' ? formatCdf(item.montant_cdf) : formatUsd(item.montant_usd), item.note || '—']),
-    ...report.sorties.map((item) => [formatDateShort(item.date), 'Sortie', item.nature, item.beneficiaire || '—', item.devise === 'CDF' ? formatCdf(item.montant_cdf) : formatUsd(item.montant_usd), item.description || '—']),
-    ...report.reversements.map((item) => [formatDateShort(item.date_reversement), 'Reversement', item.type, item.periode_debut && item.periode_fin ? `${item.periode_debut} - ${item.periode_fin}` : '—', `${formatCdf(item.montant_cdf)} / ${formatUsd(item.montant_usd)}`, '—']),
+    ...report.entrees.map((item) => [
+      formatDateShort(item.date),
+      'Entrée',
+      item.categorie_nom || item.culte || '—',
+      item.culte || '—',
+      item.devise === 'CDF' ? formatNumber(Number(item.montant_cdf || 0)) : '',
+      item.devise === 'USD' ? formatNumber(Number(item.montant_usd || 0)) : '',
+      item.note || '—',
+    ]),
+    ...report.sorties.map((item) => [
+      formatDateShort(item.date),
+      'Sortie',
+      item.nature || '—',
+      item.beneficiaire || '—',
+      item.devise === 'CDF' ? formatNumber(Number(item.montant_cdf || 0)) : '',
+      item.devise === 'USD' ? formatNumber(Number(item.montant_usd || 0)) : '',
+      item.description || '—',
+    ]),
+    ...report.reversements.map((item) => [
+      formatDateShort(item.date_reversement),
+      'Reversement',
+      item.type || '—',
+      item.beneficiaire || '—',
+      Number(item.montant_cdf) > 0 ? formatNumber(Number(item.montant_cdf || 0)) : '',
+      Number(item.montant_usd) > 0 ? formatNumber(Number(item.montant_usd || 0)) : '',
+      // details column - keep empty or include destination
+      item.description || '—',
+    ]),
   ];
 
   if (detailRows.length > 0) {
     autoTable(doc, {
       startY: 112,
-      head: [['Date', 'Type', 'Nature / Type', 'Bénéficiaire / Période', 'Montant', 'Détails']],
+      head: [['Date', 'Type', 'Nature / Type', 'Bénéficiaire', 'Montant CDF', 'Montant USD', 'Détails']],
       body: detailRows,
       theme: 'grid',
       headStyles: { fillColor: [22, 101, 52] },
