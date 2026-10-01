@@ -151,11 +151,15 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
       const totalSortiesCdf = monthlySortiesCdf.reduce((s, v) => s + v, 0);
       const totalSortiesUsd = monthlySortiesUsd.reduce((s, v) => s + v, 0);
 
-      // Les montants réservés pour la Communauté Centrale et l'Apôtre sont retirés
-      // immédiatement du calcul du solde net avant le décaissement. Le décaissement
-      // sert uniquement à générer le PDF et à tracer le versement, sans modifier à nouveau la caisse.
-      const soldeNetCdf = totalAllEntreesCdf - totalSortiesCdf - communauteDisponibleCdf - apotreDisponibleCdf;
-      const soldeNetUsd = totalAllEntreesUsd - totalSortiesUsd - communauteDisponibleUsd - apotreDisponibleUsd;
+      // Les montants réservés pour la Communauté Centrale et l'Apôtre
+      // ont déjà été soustraits du solde au moment de la saisie initiale.
+      // Le reversement (décaissement) est une sortie qui génère un PDF
+      // et une trace, mais NE DOIT PAS modifier le solde net.
+      // Pour garantir cela, on soustrait ici les montants dus (communauteDue/apotreDue)
+      // et NON pas le montant disponible (communauteDisponible/apotreDisponible)
+      // qui varierait après paiement et remonterait le solde.
+      const soldeNetCdf = totalAllEntreesCdf - totalSortiesCdf - communauteDueCdf - apotreDueCdf;
+      const soldeNetUsd = totalAllEntreesUsd - totalSortiesUsd - communauteDueUsd - apotreDueUsd;
       setSoldeNetCdf(soldeNetCdf);
       setSoldeNetUsd(soldeNetUsd);
 
@@ -349,7 +353,7 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
           <button
             onClick={() => setShowConfirm('communaute')}
             disabled={totalCommunauteCdf <= 0 && totalCommunauteUsd <= 0}
-            className="w-full mt-4 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
+            className="w-full mt-4 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center gap-2 justify-center"
           >
             <Download className="w-4 h-4" /> Décaisser
           </button>
@@ -369,7 +373,7 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
           <button
             onClick={() => setShowConfirm('apotre')}
             disabled={totalApotreCdf <= 0 && totalApotreUsd <= 0}
-            className="w-full mt-4 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
+            className="w-full mt-4 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center gap-2 justify-center"
           >
             <Download className="w-4 h-4" /> Décaisser
           </button>
@@ -405,42 +409,6 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
               <Line type="monotone" dataKey="sorties" stroke="#dc2626" strokeWidth={2} name="Dépenses" dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <h3 className="font-bold text-gray-800 mb-4">Répartition des entrées par catégorie (CDF)</h3>
-          {pieDataCdf.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie data={pieDataCdf} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>
-                  {pieDataCdf.map((entry, index) => (
-                    <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="text-gray-500">Aucune donnée</div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <h3 className="font-bold text-gray-800 mb-4">Répartition des entrées par catégorie (USD)</h3>
-          {pieDataUsd.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie data={pieDataUsd} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>
-                  {pieDataUsd.map((entry, index) => (
-                    <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="text-gray-500">Aucune donnée</div>
-          )}
         </div>
       </div>
 
