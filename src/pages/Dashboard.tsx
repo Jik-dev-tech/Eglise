@@ -46,7 +46,19 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
 
       const dimesCdf = catTotals.find((c) => c.nom === 'Dîmes')?.montant_cdf || 0; const dimesUsd = catTotals.find((c) => c.nom === 'Dîmes')?.montant_usd || 0;
       const reversementsApotreCdf = reversements.filter((r) => r.type === 'apotre').reduce((s, r) => s + r.montant_cdf, 0); const reversementsApotreUsd = reversements.filter((r) => r.type === 'apotre').reduce((s, r) => s + r.montant_usd, 0);
-      const apotreDueCdf = (dimesCdf - communauteDueCdf) * 0.1; const apotreDueUsd = (dimesUsd - communauteDueUsd) * 0.1;
+
+      const apotreDueCdf = (() => {
+        if (baseCommunauteCdf <= 0) return 0;
+        const communauteShareFromDimes = communauteDueCdf * (dimesCdf / baseCommunauteCdf);
+        const dimesNet = dimesCdf - communauteShareFromDimes;
+        return dimesNet * 0.1;
+      })();
+      const apotreDueUsd = (() => {
+        if (baseCommunauteUsd <= 0) return 0;
+        const communauteShareFromDimes = communauteDueUsd * (dimesUsd / baseCommunauteUsd);
+        const dimesNet = dimesUsd - communauteShareFromDimes;
+        return dimesNet * 0.1;
+      })();
       const apotreDisponibleCdf = Math.max(0, apotreDueCdf - reversementsApotreCdf); const apotreDisponibleUsd = Math.max(0, apotreDueUsd - reversementsApotreUsd);
       setTotalApotreCdf(apotreDisponibleCdf); setTotalApotreUsd(apotreDisponibleUsd);
 
@@ -93,16 +105,99 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
     {successMsg && <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl flex items-center gap-2"><CheckCircle2 className="w-5 h-5" /><span className="text-sm font-medium">{successMsg}</span></div>}
     {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2"><AlertTriangle className="w-5 h-5" /><span className="text-sm">{error}</span></div>}
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center"><TrendingUp className="w-5 h-5 text-emerald-600" /></div>{entreesMoisPrecCdf > 0 && <span className={`text-xs font-semibold px-2 py-1 rounded-full ${variation >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{variation >= 0 ? '+' : ''}{variation.toFixed(1)}%</span>}</div><p className="text-sm text-gray-500">Entr��es du mois</p><p className="text-sm font-bold text-gray-800 mt-1">{formatDual(entreesMoisCdf, entreesMoisUsd)}</p></div>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center"><TrendingDown className="w-5 h-5 text-red-600" /></div></div><p className="text-sm text-gray-500">Sorties du mois</p><p className="text-sm font-bold text-gray-800 mt-1">{formatDual(sortiesMoisCdf, sortiesMoisUsd)}</p></div>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><Wallet className="w-5 h-5 text-blue-600" /></div></div><p className="text-sm text-gray-500">Solde net en caisse</p><p className="text-sm font-bold text-gray-800 mt-1">{formatDual(soldeNetCdf, soldeNetUsd)}</p></div>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center"><Wallet className="w-5 h-5 text-amber-600" /></div></div><p className="text-sm text-gray-500">Total global des entrées</p><p className="text-sm font-bold text-gray-800 mt-1">{formatDual(totalGlobalCdf, totalGlobalUsd)}</p></div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center"><TrendingUp className="w-5 h-5 text-emerald-600" /></div><span className="text-sm text-gray-500">Entrées du mois</span></div><div className="flex items-center gap-1 text-xs text-emerald-600 font-medium">{entreesMoisPrecCdf > 0 && <span className="text-emerald-600">{variation >= 0 ? '+' : ''}{variation.toFixed(1)}%</span>}<span className="ml-2 text-gray-400">vs. mois précédent</span></div><p className="mt-2 text-xl font-bold text-gray-800">{formatDual(entreesMoisCdf, entreesMoisUsd)}</p></div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center"><TrendingDown className="w-5 h-5 text-red-600" /></div><span className="text-sm text-gray-500">Sorties du mois</span></div><p className="mt-2 text-xl font-bold text-gray-800">{formatDual(sortiesMoisCdf, sortiesMoisUsd)}</p></div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><Wallet className="w-5 h-5 text-blue-600" /></div><span className="text-sm text-gray-500">Solde net</span></div><p className="mt-2 text-xl font-bold text-gray-800">{formatDual(soldeNetCdf, soldeNetUsd)}</p></div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><div className="flex items-center justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center"><Wallet className="w-5 h-5 text-amber-600" /></div><span className="text-sm text-gray-500">Total global</span></div><p className="mt-2 text-xl font-bold text-gray-800">{formatDual(totalGlobalCdf, totalGlobalUsd)}</p></div>
     </div>
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div className="px-5 py-4 border-b border-gray-100"><h2 className="text-lg font-bold text-gray-800">Totaux par catégorie</h2></div><div className="overflow-x-auto"><table className="w-full"><thead><tr className="bg-gray-50"><th className="text-left px-5 py-3 text-sm font-semibold text-gray-600">Catégorie</th><th className="text-right px-5 py-3 text-sm font-semibold text-gray-600">Montant CDF</th><th className="text-right px-5 py-3 text-sm font-semibold text-gray-600">Montant USD</th></tr></thead><tbody>{categoryTotals.map((cat, i) => <tr key={i} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors"><td className="px-5 py-3 text-sm text-gray-700">{cat.nom}</td><td className="px-5 py-3 text-sm text-right font-semibold text-gray-800">{formatCdf(cat.montant_cdf)}</td><td className="px-5 py-3 text-sm text-right font-semibold text-gray-800">{formatUsd(cat.montant_usd)}</td></tr>)}<tr className="border-t-2 border-gray-200 bg-gray-50"><td className="px-5 py-3 text-sm font-bold text-gray-800">Total Global</td><td className="px-5 py-3 text-sm text-right font-bold text-emerald-700">{formatCdf(totalGlobalCdf)}</td><td className="px-5 py-3 text-sm text-right font-bold text-emerald-700">{formatUsd(totalGlobalUsd)}</td></tr></tbody></table></div></div>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl border border-teal-100 p-5"><div className="flex items-start gap-3 mb-4"><div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0"><Building2 className="w-5 h-5 text-teal-700" /></div><div><h3 className="font-bold text-gray-800">Communauté Centrale</h3><p className="text-xs text-gray-500">20% (Dîmes + Offrandes Ord. + Actions de Grâce + Évangélisation)</p></div></div><p className="text-lg font-bold text-teal-700 mb-4">{formatDual(totalCommunauteCdf, totalCommunauteUsd)}</p><button onClick={() => setShowConfirm('communaute')} disabled={totalCommunauteCdf <= 0 && totalCommunauteUsd <= 0} className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"><Download className="w-4 h-4" /> Décaisser</button></div><div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-100 p-5"><div className="flex items-start gap-3 mb-4"><div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0"><Crown className="w-5 h-5 text-amber-700" /></div><div><h3 className="font-bold text-gray-800">Apôtre</h3><p className="text-xs text-gray-500">10% des Dîmes uniquement</p></div></div><p className="text-lg font-bold text-amber-700 mb-4">{formatDual(totalApotreCdf, totalApotreUsd)}</p><button onClick={() => setShowConfirm('apotre')} disabled={totalApotreCdf <= 0 && totalApotreUsd <= 0} className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"><Download className="w-4 h-4" /> Décaisser</button></div></div>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><h3 className="font-bold text-gray-800 mb-4">Évolution mensuelle (Recettes vs Dépenses) — CDF</h3><ResponsiveContainer width="100%" height={280}><LineChart data={chartDataCdf}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" /><XAxis dataKey="mois" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} /><Tooltip formatter={(v) => formatCdf(Number(v))} /><Legend /><Line type="monotone" dataKey="entrees" stroke="#16a34a" strokeWidth={2} name="Recettes" dot={{ r: 3 }} /><Line type="monotone" dataKey="sorties" stroke="#dc2626" strokeWidth={2} name="Dépenses" dot={{ r: 3 }} /></LineChart></ResponsiveContainer></div><div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><h3 className="font-bold text-gray-800 mb-4">Évolution mensuelle (Recettes vs Dépenses) — USD</h3><ResponsiveContainer width="100%" height={280}><LineChart data={chartDataUsd}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" /><XAxis dataKey="mois" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} /><Tooltip formatter={(v) => formatUsd(Number(v))} /><Legend /><Line type="monotone" dataKey="entrees" stroke="#16a34a" strokeWidth={2} name="Recettes" dot={{ r: 3 }} /><Line type="monotone" dataKey="sorties" stroke="#dc2626" strokeWidth={2} name="Dépenses" dot={{ r: 3 }} /></LineChart></ResponsiveContainer></div></div>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><h3 className="font-bold text-gray-800 mb-4">Répartition des entrées par catégorie (CDF)</h3>{pieDataCdf.length > 0 ? <ResponsiveContainer width="100%" height={280}><PieChart><Pie data={pieDataCdf} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>{pieDataCdf.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}</Pie><Tooltip formatter={(v) => formatCdf(Number(v))} /><Legend wrapperStyle={{ fontSize: 11 }} /></PieChart></ResponsiveContainer> : <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">Aucune donnée à afficher</div>}</div><div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"><h3 className="font-bold text-gray-800 mb-4">Répartition des entrées par catégorie (USD)</h3>{pieDataUsd.length > 0 ? <ResponsiveContainer width="100%" height={280}><PieChart><Pie data={pieDataUsd} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>{pieDataUsd.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}</Pie><Tooltip formatter={(v) => formatUsd(Number(v))} /><Legend wrapperStyle={{ fontSize: 11 }} /></PieChart></ResponsiveContainer> : <div className="h-[280px] flex items-center justify-center text-gray-400 text-sm">Aucune donnée à afficher</div>}</div></div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><button onClick={() => onNavigate('entry')} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-left hover:shadow-md hover:border-emerald-200 transition-all group"><div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-3 group-hover:bg-emerald-100 transition-colors"><ArrowUpRight className="w-5 h-5 text-emerald-600" /></div><p className="font-semibold text-gray-800 text-sm">Enregistrer une Entrée</p><p className="text-xs text-gray-500 mt-1">Dîmes, offrandes, dons...</p></button><button onClick={() => onNavigate('exit')} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-left hover:shadow-md hover:border-red-200 transition-all group"><div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-3 group-hover:bg-red-100 transition-colors"><ArrowDownRight className="w-5 h-5 text-red-600" /></div><p className="font-semibold text-gray-800 text-sm">Enregistrer une Sortie</p><p className="text-xs text-gray-500 mt-1">Décaissements</p></button><button onClick={() => onNavigate('reports')} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-left hover:shadow-md hover:border-blue-200 transition-all group"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors"><Download className="w-5 h-5 text-blue-600" /></div><p className="font-semibold text-gray-800 text-sm">Rapports</p><p className="text-xs text-gray-500 mt-1">Télécharger les PDF</p></button><button onClick={() => onNavigate('settings')} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-left hover:shadow-md hover:border-gray-200 transition-all group"><div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3 group-hover:bg-gray-200 transition-colors"><Wallet className="w-5 h-5 text-gray-600" /></div><p className="font-semibold text-gray-800 text-sm">Paramètres</p><p className="text-xs text-gray-500 mt-1">Configuration</p></button></div>
-    {showConfirm && <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-[fadeIn_0.2s_ease]"><div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6"><div className="text-center"><div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-amber-100 mb-4"><AlertTriangle className="w-7 h-7 text-amber-600" /></div><h3 className="text-lg font-bold text-gray-800">Confirmer le décaissement</h3><p className="text-sm text-gray-500 mt-2">{showConfirm === 'communaute' ? `Reverser ${formatDual(totalCommunauteCdf, totalCommunauteUsd)} à la Communauté Centrale (20%)` : `Reverser ${formatDual(totalApotreCdf, totalApotreUsd)} à l’Apôtre (10%)`}</p></div><div className="flex gap-3 mt-6"><button onClick={() => handleReversement(showConfirm)} className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all text-sm">Confirmer</button><button onClick={() => setShowConfirm(null)} className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all text-sm">Annuler</button></div></div></div>}
+
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100"><h2 className="text-lg font-bold text-gray-800">Totaux par catégorie</h2></div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50"><tr><th className="text-left px-5 py-3 text-sm font-semibold text-gray-600">Catégorie</th><th className="text-right px-5 py-3 text-sm font-semibold text-gray-600">Montant CDF</th><th className="text-right px-5 py-3 text-sm font-semibold text-gray-600">Montant USD</th></tr></thead>
+          <tbody>{categoryTotals.map((cat, i) => <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors"><td className="px-5 py-3 text-sm text-gray-700">{cat.nom}</td><td className="px-5 py-3 text-sm text-right font-medium text-emerald-700">{formatCdf(cat.montant_cdf)}</td><td className="px-5 py-3 text-sm text-right font-medium text-blue-700">{formatUsd(cat.montant_usd)}</td></tr>)}</tbody>
+          <tfoot><tr className="border-t-2 border-gray-200 bg-gray-50"><td className="px-5 py-3 text-sm font-bold text-gray-800">Total Global</td><td className="px-5 py-3 text-right text-sm font-bold text-emerald-700">{formatCdf(totalGlobalCdf)}</td><td className="px-5 py-3 text-right text-sm font-bold text-blue-700">{formatUsd(totalGlobalUsd)}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl border border-teal-100 p-5">
+        <div className="flex items-start gap-3 mb-4"><div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center"><Building2 className="w-5 h-5 text-teal-700" /></div><div><h3 className="font-bold text-gray-800">Communauté Centrale</h3><p className="text-xs text-gray-600">20% (Dîmes + Offrandes Ordinaires + Actions de Grâce + Évangélisation)</p></div></div>
+        <p className="text-lg font-bold text-teal-700">{formatDual(totalCommunauteCdf, totalCommunauteUsd)}</p>
+        <button onClick={() => setShowConfirm('communaute')} disabled={totalCommunauteCdf <= 0 && totalCommunauteUsd <= 0} className="w-full mt-4 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"><Download className="w-4 h-4" /> Décaisser</button>
+      </div>
+
+      <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-100 p-5">
+        <div className="flex items-start gap-3 mb-4"><div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center"><Crown className="w-5 h-5 text-amber-700" /></div><div><h3 className="font-bold text-gray-800">Apôtre</h3><p className="text-xs text-gray-600">10% de la dîme nette restante</p></div></div>
+        <p className="text-lg font-bold text-amber-700">{formatDual(totalApotreCdf, totalApotreUsd)}</p>
+        <button onClick={() => setShowConfirm('apotre')} disabled={totalApotreCdf <= 0 && totalApotreUsd <= 0} className="w-full mt-4 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"><Download className="w-4 h-4" /> Décaisser</button>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <h3 className="font-bold text-gray-800 mb-4">Évolution mensuelle (CDF)</h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <LineChart data={chartDataCdf}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip formatter={(v) => formatCdf(Number(v))} />
+            <Legend />
+            <Line type="monotone" dataKey="entrees" stroke="#16a34a" strokeWidth={2} name="Recettes" dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="sorties" stroke="#dc2626" strokeWidth={2} name="Dépenses" dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <h3 className="font-bold text-gray-800 mb-4">Évolution mensuelle (USD)</h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <LineChart data={chartDataUsd}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip formatter={(v) => formatUsd(Number(v))} />
+            <Legend />
+            <Line type="monotone" dataKey="entrees" stroke="#16a34a" strokeWidth={2} name="Recettes" dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="sorties" stroke="#dc2626" strokeWidth={2} name="Dépenses" dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <h3 className="font-bold text-gray-800 mb-4">Répartition des entrées par catégorie (CDF)</h3>
+        {pieDataCdf.length > 0 ? <ResponsiveContainer width="100%" height={280}><PieChart><Pie data={pieDataCdf} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>{pieDataCdf.map((entry, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}</Pie><Tooltip formatter={(v) => formatCdf(Number(v))} /><Legend wrapperStyle={{ fontSize: 11 }} /></PieChart></ResponsiveContainer> : <div className="h-[280px] flex items-center justify-center text-gray-500 text-sm">Aucune donnée à afficher</div>}
+      </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <h3 className="font-bold text-gray-800 mb-4">Répartition des entrées par catégorie (USD)</h3>
+        {pieDataUsd.length > 0 ? <ResponsiveContainer width="100%" height={280}><PieChart><Pie data={pieDataUsd} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>{pieDataUsd.map((entry, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}</Pie><Tooltip formatter={(v) => formatUsd(Number(v))} /><Legend wrapperStyle={{ fontSize: 11 }} /></PieChart></ResponsiveContainer> : <div className="h-[280px] flex items-center justify-center text-gray-500 text-sm">Aucune donnée à afficher</div>}
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <button onClick={() => onNavigate('entry')} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-left hover:shadow-md hover:border-emerald-200 transition-all group"><div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-3 group-hover:bg-emerald-100 transition-colors"><ArrowUpRight className="w-5 h-5 text-emerald-600" /></div><p className="font-semibold text-gray-800">Enregistrer une Entrée</p><p className="text-xs text-gray-500 mt-1">Dîmes, offrandes, dons...</p></button>
+      <button onClick={() => onNavigate('exit')} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-left hover:shadow-md hover:border-red-200 transition-all group"><div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-3 group-hover:bg-red-100 transition-colors"><ArrowDownRight className="w-5 h-5 text-red-600" /></div><p className="font-semibold text-gray-800">Enregistrer une Sortie</p><p className="text-xs text-gray-500 mt-1">Décaissements</p></button>
+      <button onClick={() => onNavigate('reports')} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-left hover:shadow-md hover:border-blue-200 transition-all group"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors"><Download className="w-5 h-5 text-blue-600" /></div><p className="font-semibold text-gray-800">Rapports</p><p className="text-xs text-gray-500 mt-1">Télécharger les PDF</p></button>
+      <button onClick={() => onNavigate('settings')} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-left hover:shadow-md hover:border-gray-200 transition-all group"><div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3 group-hover:bg-gray-200 transition-colors"><Wallet className="w-5 h-5 text-gray-600" /></div><p className="font-semibold text-gray-800">Paramètres</p><p className="text-xs text-gray-500 mt-1">Configuration</p></button>
+    </div>
+
+    {showConfirm && <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-[fadeIn_0.2s_ease]">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-amber-100 mb-4"><AlertTriangle className="w-7 h-7 text-amber-600" /></div>
+          <h3 className="text-lg font-bold text-gray-800">Confirmer le décaissement</h3>
+          <p className="mt-2 text-sm text-gray-500">{showConfirm === 'communaute' ? `Reversez ${formatDual(totalCommunauteCdf, totalCommunauteUsd)} à la Communauté Centrale (20%)` : `Reversez ${formatDual(totalApotreCdf, totalApotreUsd)} à l’Apôtre (10%)`}</p>
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={() => handleReversement(showConfirm)} className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all text-sm">Confirmer</button>
+          <button onClick={() => setShowConfirm(null)} className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all text-sm">Annuler</button>
+        </div>
+      </div>
+    </div>}
   </div>;
 }
