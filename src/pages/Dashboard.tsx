@@ -25,6 +25,8 @@ interface DashboardProps {
   onNavigate: (page: string) => void;
 }
 
+const COMMUNAUTE_RATE = 0.2;
+const APOSTLE_RATE = 0.1;
 const PIE_COLORS = ['#16a34a', '#0891b2', '#ca8a04', '#7c3aed', '#dc2626', '#ea580c'];
 
 export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
@@ -93,8 +95,8 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
       const baseCommunauteUsd = catTotals.filter((c) => revCats.includes(c.nom)).reduce((s, c) => s + c.montant_usd, 0);
       const reversementsCommunauteCdf = reversements.filter((r) => r.type === 'communaute_centrale').reduce((s, r) => s + r.montant_cdf, 0);
       const reversementsCommunauteUsd = reversements.filter((r) => r.type === 'communaute_centrale').reduce((s, r) => s + r.montant_usd, 0);
-      const communauteDueCdf = baseCommunauteCdf * 0.2;
-      const communauteDueUsd = baseCommunauteUsd * 0.2;
+      const communauteDueCdf = baseCommunauteCdf * COMMUNAUTE_RATE;
+      const communauteDueUsd = baseCommunauteUsd * COMMUNAUTE_RATE;
       const communauteDisponibleCdf = Math.max(0, communauteDueCdf - reversementsCommunauteCdf);
       const communauteDisponibleUsd = Math.max(0, communauteDueUsd - reversementsCommunauteUsd);
       setTotalCommunauteCdf(communauteDisponibleCdf);
@@ -109,14 +111,14 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
         if (baseCommunauteCdf <= 0) return 0;
         const communauteShareFromDimes = communauteDueCdf * (dimesCdf / baseCommunauteCdf);
         const dimesNet = dimesCdf - communauteShareFromDimes;
-        return dimesNet * 0.1;
+        return dimesNet * APOSTLE_RATE;
       })();
 
       const apotreDueUsd = (() => {
         if (baseCommunauteUsd <= 0) return 0;
         const communauteShareFromDimes = communauteDueUsd * (dimesUsd / baseCommunauteUsd);
         const dimesNet = dimesUsd - communauteShareFromDimes;
-        return dimesNet * 0.1;
+        return dimesNet * APOSTLE_RATE;
       })();
 
       const apotreDisponibleCdf = Math.max(0, apotreDueCdf - reversementsApotreCdf);
@@ -148,6 +150,10 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
       const totalAllEntreesUsd = entrees.reduce((s, e) => s + e.montant_usd, 0);
       const totalSortiesCdf = monthlySortiesCdf.reduce((s, v) => s + v, 0);
       const totalSortiesUsd = monthlySortiesUsd.reduce((s, v) => s + v, 0);
+
+      // Les montants réservés pour la Communauté Centrale et l'Apôtre sont retirés
+      // immédiatement du calcul du solde net avant le décaissement. Le décaissement
+      // sert uniquement à générer le PDF et à tracer le versement, sans modifier à nouveau la caisse.
       const soldeNetCdf = totalAllEntreesCdf - totalSortiesCdf - communauteDisponibleCdf - apotreDisponibleCdf;
       const soldeNetUsd = totalAllEntreesUsd - totalSortiesUsd - communauteDisponibleUsd - apotreDisponibleUsd;
       setSoldeNetCdf(soldeNetCdf);
@@ -343,7 +349,7 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
           <button
             onClick={() => setShowConfirm('communaute')}
             disabled={totalCommunauteCdf <= 0 && totalCommunauteUsd <= 0}
-            className="w-full mt-4 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
+            className="w-full mt-4 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" /> Décaisser
           </button>
@@ -363,7 +369,7 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
           <button
             onClick={() => setShowConfirm('apotre')}
             disabled={totalApotreCdf <= 0 && totalApotreUsd <= 0}
-            className="w-full mt-4 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
+            className="w-full mt-4 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" /> Décaisser
           </button>
@@ -516,3 +522,5 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
     </div>
   );
 }
+
+export default Dashboard;
