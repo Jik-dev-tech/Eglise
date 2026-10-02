@@ -3,21 +3,17 @@ import { ArrowLeft } from 'lucide-react';
 import { useFinance } from '@/hooks/useFinance';
 import type { Config, EntreeWithCategorie, Reversement, Sortie } from '@/types';
 import { generateReport } from '@/services/pdf';
+import { toLocalISO } from '@/utils/format';
 
 interface ReportsPageProps { config: Config; onBack: () => void; }
 type ReportRange = 'day' | 'week' | 'month' | 'quarter' | 'year';
 const MONTH_NAMES = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
-// helper local date -> 'YYYY-MM-DD'
 function formatLocal(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return toLocalISO(date);
 }
 
 function getWeekRange(date: string) {
-  // date is 'YYYY-MM-DD' -> construct local Date
   const [y, m, d] = date.split('-').map(Number);
   const selected = new Date(y, m - 1, d);
   const day = selected.getDay();
@@ -31,16 +27,15 @@ function getWeekRange(date: string) {
 }
 
 function getMonthRange(year: number, month: number) {
-  // month: 0..11
   const start = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-  const endDate = new Date(year, month + 1, 0); // last day of month (local)
+  const endDate = new Date(year, month + 1, 0);
   return { start, end: formatLocal(endDate) };
 }
 
 function getQuarterRange(year: number, quarter: number) {
   const startMonth = (quarter - 1) * 3;
   const startDate = new Date(year, startMonth, 1);
-  const endDate = new Date(year, startMonth + 3, 0); // last day of quarter
+  const endDate = new Date(year, startMonth + 3, 0);
   return { start: formatLocal(startDate), end: formatLocal(endDate) };
 }
 
@@ -50,8 +45,8 @@ function getDateLabel(date: string) { const [y, m, d] = date.split('-').map(Numb
 export function ReportsPage({ config, onBack }: ReportsPageProps) {
   const { getEntrees, getSorties, getReversements, getExercice, getBalance } = useFinance();
   const [selectedRange, setSelectedRange] = useState<ReportRange>('day');
-  const [dailyDate, setDailyDate] = useState(new Date().toISOString().slice(0, 10));
-  const [weekDate, setWeekDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dailyDate, setDailyDate] = useState(() => toLocalISO(new Date()));
+  const [weekDate, setWeekDate] = useState(() => toLocalISO(new Date()));
   const [monthIndex, setMonthIndex] = useState(new Date().getMonth());
   const [quarterIndex, setQuarterIndex] = useState(Math.floor(new Date().getMonth() / 3) + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -69,13 +64,13 @@ export function ReportsPage({ config, onBack }: ReportsPageProps) {
   const buildReport = async (start: string, end: string, title: string, periodLabel: string, year: number) => {
     setLoading(true); setError(null); setSuccess(false);
     try {
-      // debug: ensure start/end are what we expect
-      // console.debug('buildReport', start, end);
+      console.log('[Reports] range', { start, end });
       const [entrees, sorties, reversements] = await Promise.all([
         getEntrees(start, end),
         getSorties(start, end),
         getReversements(start, end),
       ]);
+      console.log('[Reports] counts', { entrees: entrees.length, sorties: sorties.length, reversements: reversements.length });
 
       const totalEntreesCdf = (entrees || []).reduce((sum, item) => sum + Number(item.montant_cdf || 0), 0);
       const totalEntreesUsd = (entrees || []).reduce((sum, item) => sum + Number(item.montant_usd || 0), 0);
@@ -122,7 +117,6 @@ export function ReportsPage({ config, onBack }: ReportsPageProps) {
   const generateQuarterly = () => { const { start, end } = getQuarterRange(currentYear, quarterIndex); void buildReport(start, end, `Rapport Trimestriel ${quarterIndex}`, `Trimestriel - ${quarterIndex}`, currentYear); };
   const generateAnnual = () => { const { start, end } = getYearRange(currentYear); void buildReport(start, end, `Rapport Annuel ${currentYear}`, `Annuel - ${currentYear}`, currentYear); };
   const actions = { day: generateDaily, week: generateWeekly, month: generateMonthly, quarter: generateQuarterly, year: generateAnnual };
-
   const years = useMemo(() => Array.from(new Set([...reportYears, currentYear, currentYear - 1, currentYear - 2])).sort((a, b) => a - b), [reportYears, currentYear]);
   const ranges: [ReportRange, string][] = [['day', 'Journalier'], ['week', 'Hebdomadaire'], ['month', 'Mensuel'], ['quarter', 'Trimestriel'], ['year', 'Annuel']];
 
