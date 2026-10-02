@@ -267,39 +267,39 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
               <TrendingUp className="w-5 h-5 text-emerald-600" />
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-800 text-sm">Recettes ce mois</h4>
-              <div className="text-2xl font-bold text-gray-900">{formatDual(entreesMoisCdf, entreesMoisUsd)}</div>
+            <div className="ml-3 min-w-0">
+              <h4 className="font-semibold text-gray-800 text-sm">Recettes de ce mois</h4>
+              <div className="text-xl font-bold text-gray-900 whitespace-nowrap">{formatDual(entreesMoisCdf, entreesMoisUsd)}</div>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
               <TrendingDown className="w-5 h-5 text-red-600" />
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-800 text-sm">Dépenses ce mois</h4>
-              <div className="text-2xl font-bold text-gray-900">{formatDual(sortiesMoisCdf, sortiesMoisUsd)}</div>
+            <div className="ml-3 min-w-0">
+              <h4 className="font-semibold text-gray-800 text-sm">Dépenses de ce mois</h4>
+              <div className="text-xl font-bold text-gray-900 whitespace-nowrap">{formatDual(sortiesMoisCdf, sortiesMoisUsd)}</div>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
               <Wallet className="w-5 h-5 text-blue-600" />
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-800 text-sm">Solde net</h4>
-              <div className="text-2xl font-bold text-gray-900">{formatDual(soldeNetCdf, soldeNetUsd)}</div>
+            <div className="ml-3 min-w-0">
+              <h4 className="font-semibold text-gray-800 text-sm">Solde net en caisse</h4>
+              <div className="text-xl font-bold text-gray-900 whitespace-nowrap">{formatDual(soldeNetCdf, soldeNetUsd)}</div>
             </div>
           </div>
         </div>
@@ -345,7 +345,7 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
               <Building2 className="w-5 h-5 text-teal-700" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-800">Communauté Centrale</h3>
+              <h3 className="font-bold text-gray-800">Représentation légale</h3>
               <p className="text-xs text-gray-600">20% (Dîmes + Offrandes Ordinaires + Actions de Grâce + Évangélisation)</p>
             </div>
           </div>
@@ -365,7 +365,7 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
               <Crown className="w-5 h-5 text-amber-700" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-800">Apôtre</h3>
+              <h3 className="font-bold text-gray-800">Dîmes de dîmes</h3>
               <p className="text-xs text-gray-600">10% de la dîme nette restante</p>
             </div>
           </div>
