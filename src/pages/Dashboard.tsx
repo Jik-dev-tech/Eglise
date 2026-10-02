@@ -228,7 +228,7 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
     });
 
     if (result) {
-      const label = type === 'communaute' ? 'Communauté Centrale (20%)' : 'Apôtre (10%)';
+      const label = type === 'communaute' ? '20% Représentation légale' : '10% Dîmes des dîmes';
       generateRecuReversement(config, result, label);
       setSuccessMsg(`Reversement de ${formatDual(montantCdf, montantUsd)} enregistré. Reçu PDF téléchargé avec succès.`);
       setShowConfirm(null);
@@ -345,15 +345,15 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
               <Building2 className="w-5 h-5 text-teal-700" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-800">Représentation légale</h3>
-              <p className="text-xs text-gray-600">20% (Dîmes + Offrandes Ordinaires + Actions de Grâce + Évangélisation)</p>
+              <h3 className="font-bold text-gray-800">20% Représentation légale</h3>
+              <p className="text-xs text-gray-600">Dîmes + Offrandes Ordinaires + Actions de Grâce + Évangélisation</p>
             </div>
           </div>
           <p className="text-lg font-bold text-teal-700">{formatDual(totalCommunauteCdf, totalCommunauteUsd)}</p>
           <button
             onClick={() => setShowConfirm('communaute')}
             disabled={totalCommunauteCdf <= 0 && totalCommunauteUsd <= 0}
-            className="w-full mt-4 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center gap-2 justify-center"
+            className="w-full mt-4 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" /> Décaisser
           </button>
@@ -365,15 +365,15 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
               <Crown className="w-5 h-5 text-amber-700" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-800">Dîmes de dîmes</h3>
-              <p className="text-xs text-gray-600">10% de la dîme nette restante</p>
+              <h3 className="font-bold text-gray-800">10% Dîmes des dîmes</h3>
+              <p className="text-xs text-gray-600">De la dîme nette restante</p>
             </div>
           </div>
           <p className="text-lg font-bold text-amber-700">{formatDual(totalApotreCdf, totalApotreUsd)}</p>
           <button
             onClick={() => setShowConfirm('apotre')}
             disabled={totalApotreCdf <= 0 && totalApotreUsd <= 0}
-            className="w-full mt-4 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center gap-2 justify-center"
+            className="w-full mt-4 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" /> Décaisser
           </button>
@@ -476,8 +476,8 @@ export function Dashboard({ config, categories, onNavigate }: DashboardProps) {
               <h3 className="text-lg font-bold text-gray-800">Confirmer le décaissement</h3>
               <p className="mt-2 text-sm text-gray-500">
                 {showConfirm === 'communaute'
-                  ? `Reversez ${formatDual(totalCommunauteCdf, totalCommunauteUsd)} à la Communauté Centrale (20%)`
-                  : `Reversez ${formatDual(totalApotreCdf, totalApotreUsd)} à l'Apôtre (10%)`}
+                  ? `Reversez ${formatDual(totalCommunauteCdf, totalCommunauteUsd)} à la 20% Représentation légale`
+                  : `Reversez ${formatDual(totalApotreCdf, totalApotreUsd)} à la 10% Dîmes des dîmes`}
               </p>
             </div>
             <div className="flex gap-3 mt-6">
