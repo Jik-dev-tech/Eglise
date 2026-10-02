@@ -49,26 +49,35 @@ export function formatDateShort(date: string | Date): string {
   });
 }
 
+function pad(n: number) {
+  return String(n).padStart(2, '0');
+}
+
+export function toLocalISO(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 export function todayISO(): string {
-  return new Date().toISOString().split('T')[0];
+  return toLocalISO(new Date());
 }
 
 export function getMonthRange(year: number, month: number): { start: string; end: string } {
   const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 0);
   return {
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0],
+    start: toLocalISO(start),
+    end: toLocalISO(end),
   };
 }
 
 export function getWeekRange(mondayDate: string): { start: string; end: string } {
-  const monday = new Date(mondayDate);
+  const [y, m, d] = mondayDate.split('-').map(Number);
+  const monday = new Date(y, (m || 1) - 1, d || 1);
   const sunday = new Date(monday);
-  sunday.setDate(sunday.getDate() + 6);
+  sunday.setDate(monday.getDate() + 6);
   return {
-    start: monday.toISOString().split('T')[0],
-    end: sunday.toISOString().split('T')[0],
+    start: toLocalISO(monday),
+    end: toLocalISO(sunday),
   };
 }
 
@@ -77,8 +86,8 @@ export function getQuarterRange(year: number, quarter: number): { start: string;
   const start = new Date(year, startMonth, 1);
   const end = new Date(year, startMonth + 3, 0);
   return {
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0],
+    start: toLocalISO(start),
+    end: toLocalISO(end),
   };
 }
 
@@ -90,11 +99,12 @@ export function getYearRange(year: number): { start: string; end: string } {
 }
 
 export function getMondayOfDate(date: string): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  return d.toISOString().split('T')[0];
+  const [y, m, d] = date.split('-').map(Number);
+  const dt = new Date(y, (m || 1) - 1, d || 1);
+  const day = dt.getDay();
+  const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+  dt.setDate(diff);
+  return toLocalISO(dt);
 }
 
 export function lastDayOfMonth(date: Date): number {
