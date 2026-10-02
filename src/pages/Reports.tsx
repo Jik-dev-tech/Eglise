@@ -8,11 +8,44 @@ interface ReportsPageProps { config: Config; onBack: () => void; }
 type ReportRange = 'day' | 'week' | 'month' | 'quarter' | 'year';
 const MONTH_NAMES = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
-function getWeekRange(date: string) { const selected = new Date(`${date}T00:00:00`); const day = selected.getDay(); selected.setDate(selected.getDate() - day + (day === 0 ? -6 : 1)); const start = selected.toISOString().slice(0, 10); const endDate = new Date(selected); endDate.setDate(selected.getDate() + 6); const end = endDate.toISOString().slice(0, 10); return { start, end }; }
-function getMonthRange(year: number, month: number) { return { start: `${year}-${String(month + 1).padStart(2, '0')}-01`, end: new Date(year, month + 1, 0).toISOString().slice(0, 10) }; }
-function getQuarterRange(year: number, quarter: number) { const startMonth = (quarter - 1) * 3; return { start: `${year}-${String(startMonth + 1).padStart(2, '0')}-01`, end: new Date(year, startMonth + 3, 0).toISOString().slice(0, 10) }; }
+// helper local date -> 'YYYY-MM-DD'
+function formatLocal(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getWeekRange(date: string) {
+  // date is 'YYYY-MM-DD' -> construct local Date
+  const [y, m, d] = date.split('-').map(Number);
+  const selected = new Date(y, m - 1, d);
+  const day = selected.getDay();
+  const monday = new Date(selected);
+  monday.setDate(selected.getDate() - day + (day === 0 ? -6 : 1));
+  const start = formatLocal(monday);
+  const endDate = new Date(monday);
+  endDate.setDate(monday.getDate() + 6);
+  const end = formatLocal(endDate);
+  return { start, end };
+}
+
+function getMonthRange(year: number, month: number) {
+  // month: 0..11
+  const start = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const endDate = new Date(year, month + 1, 0); // last day of month (local)
+  return { start, end: formatLocal(endDate) };
+}
+
+function getQuarterRange(year: number, quarter: number) {
+  const startMonth = (quarter - 1) * 3;
+  const startDate = new Date(year, startMonth, 1);
+  const endDate = new Date(year, startMonth + 3, 0); // last day of quarter
+  return { start: formatLocal(startDate), end: formatLocal(endDate) };
+}
+
 function getYearRange(year: number) { return { start: `${year}-01-01`, end: `${year}-12-31` }; }
-function getDateLabel(date: string) { return new Date(`${date}T00:00:00`).toLocaleDateString('fr-FR'); }
+function getDateLabel(date: string) { const [y, m, d] = date.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('fr-FR'); }
 
 export function ReportsPage({ config, onBack }: ReportsPageProps) {
   const { getEntrees, getSorties, getReversements, getExercice, getBalance } = useFinance();
@@ -75,15 +108,15 @@ export function ReportsPage({ config, onBack }: ReportsPageProps) {
   const ranges: [ReportRange, string][] = [['day', 'Journalier'], ['week', 'Hebdomadaire'], ['month', 'Mensuel'], ['quarter', 'Trimestriel'], ['year', 'Annuel']];
 
   return <div className="mx-auto max-w-5xl">
-    <div className="mb-5 flex items-center gap-3"><button type="button" onClick={onBack} className="rounded-xl bg-gray-100 p-2.5"><ArrowLeft className="h-5 w-5 text-gray-600" /></button><div><h1 className="text-lg font-semibold">Rapports</h1><p className="text-sm text-gray-500">Générez des rapports pour différentes périodes</p></div></div>
+    <div className="mb-5 flex items-center gap-3"><button type="button" onClick={onBack} className="rounded-xl bg-gray-100 p-2.5"><ArrowLeft className="h-5 w-5 text-gray-600" /></button><div><h1 c[...]
     {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-    {success && <div role="status" aria-live="polite" className="fixed bottom-5 right-5 z-[100] flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold">Rapport généré</div>}
-    <div className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><div className="flex flex-wrap items-center gap-2">{ranges.map(([value, label]) => <button key={value} onClick={() => setSelectedRange(value)} className={`px-3 py-2 rounded-xl ${selectedRange === value ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>)}</div>
-      <div className="mt-4 flex flex-wrap items-center gap-3">{selectedRange === 'day' && <><label className="text-sm font-medium">Date</label><input type="date" value={dailyDate} onChange={(event) => setDailyDate(event.target.value)} className="rounded-xl border border-gray-200 px-3 py-2" /><button disabled={loading} onClick={generateDaily} className="px-3 py-2 rounded-xl bg-emerald-600 text-white">Générer</button></>}
-        {selectedRange === 'week' && <><label className="text-sm font-medium">Semaine (lundi)</label><input type="date" value={weekDate} onChange={(event) => setWeekDate(event.target.value)} className="rounded-xl border border-gray-200 px-3 py-2" /><button disabled={loading} onClick={generateWeekly} className="px-3 py-2 rounded-xl bg-emerald-600 text-white">Générer</button></>}
-        {selectedRange === 'month' && <><label className="text-sm font-medium">Mois</label><select value={monthIndex} onChange={(e) => setMonthIndex(Number(e.target.value))} className="rounded-xl border border-gray-200 px-3 py-2">{MONTH_NAMES.map((m, i) => <option key={m} value={i}>{m}</option>)}</select><button disabled={loading} onClick={generateMonthly} className="px-3 py-2 rounded-xl bg-emerald-600 text-white">Générer</button></>}
-        {selectedRange === 'quarter' && <><label className="text-sm font-medium">Trimestre</label><select value={quarterIndex} onChange={(e) => setQuarterIndex(Number(e.target.value))} className="rounded-xl border border-gray-200 px-3 py-2">{[1,2,3,4].map(q => <option key={q} value={q}>T{q}</option>)}</select><button disabled={loading} onClick={generateQuarterly} className="px-3 py-2 rounded-xl bg-emerald-600 text-white">Générer</button></>}
-        {selectedRange === 'year' && <><label className="text-sm font-medium">Année</label><select value={currentYear} onChange={(e) => setCurrentYear(Number(e.target.value))} className="rounded-xl border border-gray-200 px-3 py-2">{years.map(y => <option key={y} value={y}>{y}</option>)}</select><button disabled={loading} onClick={generateAnnual} className="px-3 py-2 rounded-xl bg-emerald-600 text-white">Générer</button></>}
+    {success && <div role="status" aria-live="polite" className="fixed bottom-5 right-5 z-[100] flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibol[...]
+    <div className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><div className="flex flex-wrap items-center gap-2">{ranges.map(([value, label]) => <button key={value} onClick={[...]
+      <div className="mt-4 flex flex-wrap items-center gap-3">{selectedRange === 'day' && <><label className="text-sm font-medium">Date</label><input type="date" value={dailyDate} onChange={(event[...]
+        {selectedRange === 'week' && <><label className="text-sm font-medium">Semaine (lundi)</label><input type="date" value={weekDate} onChange={(event) => setWeekDate(event.target.value)} class[...]
+        {selectedRange === 'month' && <><label className="text-sm font-medium">Mois</label><select value={monthIndex} onChange={(e) => setMonthIndex(Number(e.target.value))} className="rounded-xl [...]
+        {selectedRange === 'quarter' && <><label className="text-sm font-medium">Trimestre</label><select value={quarterIndex} onChange={(e) => setQuarterIndex(Number(e.target.value))} className="[...]
+        {selectedRange === 'year' && <><label className="text-sm font-medium">Année</label><select value={currentYear} onChange={(e) => setCurrentYear(Number(e.target.value))} className="rounded-[...]
       </div>
     </div>
   </div>;
