@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Download } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useFinance } from '@/hooks/useFinance';
 import type { Config, EntreeWithCategorie, Reversement, Sortie } from '@/types';
 import { generateReport } from '@/services/pdf';
@@ -50,27 +50,40 @@ function getDateLabel(date: string) { const [y, m, d] = date.split('-').map(Numb
 export function ReportsPage({ config, onBack }: ReportsPageProps) {
   const { getEntrees, getSorties, getReversements, getExercice, getBalance } = useFinance();
   const [selectedRange, setSelectedRange] = useState<ReportRange>('day');
-  const [dailyDate, setDailyDate] = useState(new Date().toISOString().slice(0, 10)); const [weekDate, setWeekDate] = useState(new Date().toISOString().slice(0, 10));
-  const [monthIndex, setMonthIndex] = useState(new Date().getMonth()); const [quarterIndex, setQuarterIndex] = useState(Math.floor(new Date().getMonth() / 3) + 1);
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear()); const [reportYears, setReportYears] = useState<number[]>([new Date().getFullYear()]);
-  const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null); const [success, setSuccess] = useState(false);
+  const [dailyDate, setDailyDate] = useState(new Date().toISOString().slice(0, 10));
+  const [weekDate, setWeekDate] = useState(new Date().toISOString().slice(0, 10));
+  const [monthIndex, setMonthIndex] = useState(new Date().getMonth());
+  const [quarterIndex, setQuarterIndex] = useState(Math.floor(new Date().getMonth() / 3) + 1);
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [reportYears, setReportYears] = useState<number[]>([new Date().getFullYear()]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  useEffect(() => { void getExercice(currentYear).then((row) => { if (!row) setReportYears((previous) => Array.from(new Set([...previous, currentYear])).sort((a, b) => a - b)); }); }, [currentYear, getExercice]);
+  useEffect(() => {
+    void getExercice(currentYear).then((row) => {
+      if (!row) setReportYears((previous) => Array.from(new Set([...previous, currentYear])).sort((a, b) => a - b));
+    });
+  }, [currentYear, getExercice]);
 
   const buildReport = async (start: string, end: string, title: string, periodLabel: string, year: number) => {
     setLoading(true); setError(null); setSuccess(false);
     try {
-      const [entrees, sorties, reversements] = await Promise.all([getEntrees(start, end), getSorties(start, end), getReversements(start, end)]);
+      // debug: ensure start/end are what we expect
+      // console.debug('buildReport', start, end);
+      const [entrees, sorties, reversements] = await Promise.all([
+        getEntrees(start, end),
+        getSorties(start, end),
+        getReversements(start, end),
+      ]);
 
-      const totalEntreesCdf = entrees.reduce((sum, item) => sum + Number(item.montant_cdf || 0), 0);
-      const totalEntreesUsd = entrees.reduce((sum, item) => sum + Number(item.montant_usd || 0), 0);
-      const totalSortiesCdf = sorties.reduce((sum, item) => sum + Number(item.montant_cdf || 0), 0);
-      const totalSortiesUsd = sorties.reduce((sum, item) => sum + Number(item.montant_usd || 0), 0);
-      const totalReversementsCdf = reversements.reduce((sum, item) => sum + Number(item.montant_cdf || 0), 0);
-      const totalReversementsUsd = reversements.reduce((sum, item) => sum + Number(item.montant_usd || 0), 0);
+      const totalEntreesCdf = (entrees || []).reduce((sum, item) => sum + Number(item.montant_cdf || 0), 0);
+      const totalEntreesUsd = (entrees || []).reduce((sum, item) => sum + Number(item.montant_usd || 0), 0);
+      const totalSortiesCdf = (sorties || []).reduce((sum, item) => sum + Number(item.montant_cdf || 0), 0);
+      const totalSortiesUsd = (sorties || []).reduce((sum, item) => sum + Number(item.montant_usd || 0), 0);
+      const totalReversementsCdf = (reversements || []).reduce((sum, item) => sum + Number(item.montant_cdf || 0), 0);
+      const totalReversementsUsd = (reversements || []).reduce((sum, item) => sum + Number(item.montant_usd || 0), 0);
 
-      // Use the dashboard/net balance (exact cash balance) for the report solde
-      // getBalance comes from the useFinance hook and returns the real cash balance for the given currency
       const soldeCdfRaw = await getBalance('CDF');
       const soldeUsdRaw = await getBalance('USD');
       const soldeCdf = typeof soldeCdfRaw === 'number' ? soldeCdfRaw : Number(soldeCdfRaw || 0);
@@ -80,9 +93,9 @@ export function ReportsPage({ config, onBack }: ReportsPageProps) {
         title,
         periodeLabel: periodLabel,
         year,
-        entrees: entrees as EntreeWithCategorie[],
-        sorties: sorties as Sortie[],
-        reversements: reversements as Reversement[],
+        entrees: (entrees || []) as EntreeWithCategorie[],
+        sorties: (sorties || []) as Sortie[],
+        reversements: (reversements || []) as Reversement[],
         totalEntreesCdf,
         totalEntreesUsd,
         totalSortiesCdf,
@@ -95,7 +108,12 @@ export function ReportsPage({ config, onBack }: ReportsPageProps) {
 
       setSuccess(true);
       window.setTimeout(() => setSuccess(false), 5000);
-    } catch (e) { console.error(e); setError('Une erreur est survenue lors de la génération du rapport.'); } finally { setLoading(false); }
+    } catch (e) {
+      console.error(e);
+      setError('Une erreur est survenue lors de la génération du rapport.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const generateDaily = () => void buildReport(dailyDate, dailyDate, `Rapport Journalier ${dailyDate}`, `Journalier - ${getDateLabel(dailyDate)}`, Number(dailyDate.slice(0, 4)));
@@ -104,22 +122,94 @@ export function ReportsPage({ config, onBack }: ReportsPageProps) {
   const generateQuarterly = () => { const { start, end } = getQuarterRange(currentYear, quarterIndex); void buildReport(start, end, `Rapport Trimestriel ${quarterIndex}`, `Trimestriel - ${quarterIndex}`, currentYear); };
   const generateAnnual = () => { const { start, end } = getYearRange(currentYear); void buildReport(start, end, `Rapport Annuel ${currentYear}`, `Annuel - ${currentYear}`, currentYear); };
   const actions = { day: generateDaily, week: generateWeekly, month: generateMonthly, quarter: generateQuarterly, year: generateAnnual };
-  const years = Array.from(new Set([...reportYears, currentYear, currentYear - 1, currentYear - 2])).sort((a, b) => a - b);
+
+  const years = useMemo(() => Array.from(new Set([...reportYears, currentYear, currentYear - 1, currentYear - 2])).sort((a, b) => a - b), [reportYears, currentYear]);
   const ranges: [ReportRange, string][] = [['day', 'Journalier'], ['week', 'Hebdomadaire'], ['month', 'Mensuel'], ['quarter', 'Trimestriel'], ['year', 'Annuel']];
 
-  return <div className="mx-auto max-w-5xl">
-    <div className="mb-5 flex items-center gap-3"><button type="button" onClick={onBack} className="rounded-xl bg-gray-100 p-2.5"><ArrowLeft className="h-5 w-5 text-gray-600" /></button><div><h1 c[...]
-    {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-    {success && <div role="status" aria-live="polite" className="fixed bottom-5 right-5 z-[100] flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibol[...]
-    <div className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><div className="flex flex-wrap items-center gap-2">{ranges.map(([value, label]) => <button key={value} onClick={[...]
-      <div className="mt-4 flex flex-wrap items-center gap-3">{selectedRange === 'day' && <><label className="text-sm font-medium">Date</label><input type="date" value={dailyDate} onChange={(event[...]
-        {selectedRange === 'week' && <><label className="text-sm font-medium">Semaine (lundi)</label><input type="date" value={weekDate} onChange={(event) => setWeekDate(event.target.value)} class[...]
-        {selectedRange === 'month' && <><label className="text-sm font-medium">Mois</label><select value={monthIndex} onChange={(e) => setMonthIndex(Number(e.target.value))} className="rounded-xl [...]
-        {selectedRange === 'quarter' && <><label className="text-sm font-medium">Trimestre</label><select value={quarterIndex} onChange={(e) => setQuarterIndex(Number(e.target.value))} className="[...]
-        {selectedRange === 'year' && <><label className="text-sm font-medium">Année</label><select value={currentYear} onChange={(e) => setCurrentYear(Number(e.target.value))} className="rounded-[...]
+  return (
+    <div className="mx-auto max-w-5xl">
+      <div className="mb-5 flex items-center gap-3">
+        <button type="button" onClick={onBack} className="rounded-xl bg-gray-100 p-2.5"><ArrowLeft className="h-5 w-5 text-gray-600" /></button>
+        <div>
+          <h1 className="text-lg font-bold text-gray-800">Rapports</h1>
+          <p className="text-sm text-gray-500">Génération de rapports (Journalier, Hebdomadaire, Mensuel...)</p>
+        </div>
+      </div>
+
+      {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {success && <div role="status" aria-live="polite" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">Rapport généré avec succès</div>}
+
+      <div className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          {ranges.map(([value, label]) => (
+            <button
+              key={value}
+              onClick={() => setSelectedRange(value)}
+              className={`px-3 py-2 rounded-xl text-sm font-medium ${selectedRange === value ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-100'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {selectedRange === 'day' && (
+            <>
+              <label className="text-sm font-medium">Date</label>
+              <input type="date" value={dailyDate} onChange={(e) => setDailyDate(e.target.value)} className="rounded-xl border px-3 py-2" />
+            </>
+          )}
+
+          {selectedRange === 'week' && (
+            <>
+              <label className="text-sm font-medium">Semaine (lundi)</label>
+              <input type="date" value={weekDate} onChange={(e) => setWeekDate(e.target.value)} className="rounded-xl border px-3 py-2" />
+            </>
+          )}
+
+          {selectedRange === 'month' && (
+            <>
+              <label className="text-sm font-medium">Mois</label>
+              <select value={monthIndex} onChange={(e) => setMonthIndex(Number(e.target.value))} className="rounded-xl border px-3 py-2">
+                {MONTH_NAMES.map((m, i) => <option key={m} value={i}>{m}</option>)}
+              </select>
+            </>
+          )}
+
+          {selectedRange === 'quarter' && (
+            <>
+              <label className="text-sm font-medium">Trimestre</label>
+              <select value={quarterIndex} onChange={(e) => setQuarterIndex(Number(e.target.value))} className="rounded-xl border px-3 py-2">
+                <option value={1}>T1</option>
+                <option value={2}>T2</option>
+                <option value={3}>T3</option>
+                <option value={4}>T4</option>
+              </select>
+            </>
+          )}
+
+          {selectedRange === 'year' && (
+            <>
+              <label className="text-sm font-medium">Année</label>
+              <select value={currentYear} onChange={(e) => setCurrentYear(Number(e.target.value))} className="rounded-xl border px-3 py-2">
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </>
+          )}
+
+          <div className="ml-auto">
+            <button
+              onClick={() => actions[selectedRange]()}
+              disabled={loading}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 disabled:opacity-50"
+            >
+              Générer
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>;
+  );
 }
 
 export const Reports = ReportsPage;
