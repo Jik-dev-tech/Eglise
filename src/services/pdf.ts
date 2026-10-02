@@ -64,6 +64,17 @@ function receipt(doc: jsPDF, config: Config, title: string, rows: [string, strin
   doc.save(filename);
 }
 
+function formatReversementType(type?: string) {
+  switch (type) {
+    case 'communaute_centrale':
+      return '20% Représentation légale';
+    case 'apotre':
+      return '10% Dîmes des dîmes';
+    default:
+      return type || '—';
+  }
+}
+
 export function generateRecuEntree(config: Config, entree: EntreeWithCategorie, categorieNom: string) {
   const doc = new jsPDF();
   // Title changed to "Bon d'entrée"
@@ -172,7 +183,7 @@ export function generateReport(config: Config, report: ReportData) {
     ...report.reversements.map((item) => [
       formatDateShort(item.date_reversement),
       'Reversement',
-      item.type || '—',
+      formatReversementType(item.type),
       item.beneficiaire || '—',
       Number(item.montant_cdf) > 0 ? formatNumber(Number(item.montant_cdf || 0)) : '',
       Number(item.montant_usd) > 0 ? formatNumber(Number(item.montant_usd || 0)) : '',
